@@ -26,8 +26,23 @@ pipeline {
         stage('Build Docker Image') {
             steps {
                 script {
-                    // Build Docker image
-                    bat "docker build -t ${DOCKER_USERNAME}/${IMAGE_NAME}:latest ."
+                    // Build Docker image (using Linux/Mac shell)
+                    sh "docker build -t ${DOCKER_USERNAME}/${IMAGE_NAME}:latest ."
+                }
+            }
+        }
+
+        stage('Push Docker Image') {
+            steps {
+                withCredentials([usernamePassword(credentialsId: "${DOCKER_CREDENTIALS_ID}", usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
+                    script {
+                        // Login to Docker Hub and push the image
+                        sh '''
+                            echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin
+                            docker push ${DOCKER_USER}/${IMAGE_NAME}:latest
+                            docker logout
+                        '''
+                    }
                 }
             }
         }
@@ -39,10 +54,10 @@ pipeline {
             cleanWs()
         }
         success {
-            echo "Pipeline completed successfully!"
+            echo "✅ Pipeline completed successfully!"
         }
         failure {
-            echo "Pipeline failed. Check logs."
+            echo "❌ Pipeline failed. Check logs."
         }
     }
 }
